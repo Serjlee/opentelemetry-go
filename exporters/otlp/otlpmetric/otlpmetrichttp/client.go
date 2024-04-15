@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -195,7 +196,8 @@ func (c *client) UploadMetrics(ctx context.Context, protoMetrics *metricpb.Resou
 				return err
 			}
 		default:
-			rErr = fmt.Errorf("failed to send metrics to %s: %s", request.URL, resp.Status)
+			b, _ := io.ReadAll(resp.Body)
+			rErr = fmt.Errorf("failed to send metrics to %s: %s (%s)", request.URL, resp.Status, base64.StdEncoding.EncodeToString(b))
 		}
 
 		if err := resp.Body.Close(); err != nil {
