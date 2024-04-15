@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -204,7 +205,8 @@ func (d *client) UploadTraces(ctx context.Context, protoSpans []*tracepb.Resourc
 			}
 			return newResponseError(resp.Header)
 		default:
-			return fmt.Errorf("failed to send to %s: %s", request.URL, resp.Status)
+			b, _ := io.ReadAll(resp.Body)
+			return fmt.Errorf("failed to send traces to %s: %s (%s)", request.URL, resp.Status, base64.StdEncoding.EncodeToString(b))
 		}
 	})
 }
