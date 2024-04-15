@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -14,10 +15,11 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
-	"google.golang.org/protobuf/encoding/protojson"
+	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/proto"
 
 	"go.opentelemetry.io/otel"
@@ -205,10 +207,21 @@ func (d *client) UploadTraces(ctx context.Context, protoSpans []*tracepb.Resourc
 			}
 			return newResponseError(resp.Header)
 		default:
-			//protoSpans[0].ScopeSpans[0].Spans[0].SpanId
 			b, _ := io.ReadAll(resp.Body)
-			r, _ := protojson.Marshal(pbRequest)
-			return fmt.Errorf("failed to send traces to %s: %s (%s). Request was: %s", request.URL, resp.Status, string(b), string(r))
+			//r, _ := protojson.Marshal(pbRequest)
+			traceIDs := map[string]struct{}{}
+			var spanIDs []string
+
+			for _, rs := range protoSpans {
+				for _, ss := range rs.ScopeSpans {
+					for _, s := range ss.Spans {
+						traceIDs[hex.EncodeToString(s.TraceId)] = struct{}{}
+						spanIDs = append(spanIDs, hex.EncodeToString(s.SpanId))
+					}
+				}
+			}
+
+			return fmt.Errorf("failed to send traces (traceIDS: [%s], spanIDS: [%s]) to %s: %s . Request was: %s", strings.Join(maps.Keys(traceIDs), ","), strings.Join(spanIDs, ","), request.URL, resp.Status, string(b))
 		}
 	})
 }
