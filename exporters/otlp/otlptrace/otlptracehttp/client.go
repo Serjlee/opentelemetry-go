@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"go.opentelemetry.io/otel"
@@ -205,8 +205,10 @@ func (d *client) UploadTraces(ctx context.Context, protoSpans []*tracepb.Resourc
 			}
 			return newResponseError(resp.Header)
 		default:
+			//protoSpans[0].ScopeSpans[0].Spans[0].SpanId
 			b, _ := io.ReadAll(resp.Body)
-			return fmt.Errorf("failed to send traces to %s: %s (%s)", request.URL, resp.Status, base64.StdEncoding.EncodeToString(b))
+			r, _ := protojson.Marshal(pbRequest)
+			return fmt.Errorf("failed to send traces to %s: %s (%s). Request was: %s", request.URL, resp.Status, string(b), string(r))
 		}
 	})
 }
